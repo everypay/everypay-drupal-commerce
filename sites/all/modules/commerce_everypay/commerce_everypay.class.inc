@@ -49,7 +49,7 @@ class Everypay
     $transaction->amount = $amount;
     $transaction->currency_code = $currency_code;
     $transaction->status = $status;
-    $transaction->remote_status = isset($response['status']) ? $response['status'] : $responce['error']['status'];
+    $transaction->remote_status = isset($response['status']) ? $response['status'] : $response['error']['status'];
     $transaction->message = isset($response['error']) ? $response['error']['message'] : $response['status'];
     $transaction->remote_id = isset($response['token']) ? $response['token'] : null;
 
