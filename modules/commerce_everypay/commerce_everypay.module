@@ -2,6 +2,11 @@
 
 /* vim: set expandtab tabstop=2 shiftwidth=2 softtabstop=2: */
 
+/*
+ * Version 1.03
+ *
+ */
+
 define('COMMERCE_EVERYPAY_MODE_SANDBOX', 'sandbox');
 define('COMMERCE_EVERYPAY_MODE_LIVE', 'live');
 
