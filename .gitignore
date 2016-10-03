@@ -1,0 +1,14 @@
+#Ignore all
+*.*
+*
+
+#exclude directory structure
+
+!modules/
+modules/*
+
+!modules/commerce_everypay/
+!modules/commerce_everypay/**
+
+!.gitignore
+!README.md

@@ -1,0 +1,187 @@
+<?php
+
+/* vim: set expandtab tabstop=2 shiftwidth=2 softtabstop=2: */
+
+define('COMMERCE_EVERYPAY_MODE_SANDBOX', 'sandbox');
+define('COMMERCE_EVERYPAY_MODE_LIVE', 'live');
+
+function commerce_everypay_commerce_payment_method_info() {
+  $payment_methods = array();
+
+  $payment_methods['commerce_everypay'] = array(
+    'title' => t('EveryPay Payments'),
+    'short_title' => t('EveryPay'),
+    'display_title' => t('Debit / Credit card'),
+    'description' => t('Provides credit card payments during checkout via EveryPay'),
+    'terminal' => false,
+    'offsite' => false,
+    'offsite_autoredirect' => false,
+    'file' => 'commerce_everypay.class.inc',
+  );
+
+  return $payment_methods;
+}
+
+function commerce_everypay_default_settings() {
+  return array(
+    'sandbox' => array(
+      'secret_key' => '',
+      'public_key' => '',
+    ),
+    'live' => array(
+      'secret_key' => '',
+      'public_key' => '',
+    ),
+    'mode' => COMMERCE_EVERYPAY_MODE_SANDBOX,
+  );
+}
+
+function commerce_everypay_settings_form($settings = null) {
+  $form = array();
+
+  $settings = (array) $settings + commerce_everypay_default_settings();
+
+  $form[COMMERCE_EVERYPAY_MODE_SANDBOX] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Test keys'),
+    '#collapsed' => FALSE,
+  );
+  $form[COMMERCE_EVERYPAY_MODE_SANDBOX]['secret_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Private test key'),
+    '#size' => 40,
+    '#maxlength' => 40,
+    '#default_value' => $settings[COMMERCE_EVERYPAY_MODE_SANDBOX]['secret_key'],
+    '#required' => TRUE,
+  );
+  $form[COMMERCE_EVERYPAY_MODE_SANDBOX]['public_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Public test key'),
+    '#size' => 40,
+    '#maxlength' => 40,
+    '#default_value' => $settings[COMMERCE_EVERYPAY_MODE_SANDBOX]['public_key'],
+    '#required' => TRUE,
+  );
+
+  $form[COMMERCE_EVERYPAY_MODE_LIVE] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Live keys'),
+    '#collapsed' => FALSE,
+  );
+
+  $form[COMMERCE_EVERYPAY_MODE_LIVE]['secret_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Private live key'),
+    '#size' => 40,
+    '#maxlength' => 40,
+    '#default_value' => $settings[COMMERCE_EVERYPAY_MODE_LIVE]['secret_key'],
+  );
+
+  $form[COMMERCE_EVERYPAY_MODE_LIVE]['public_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Public live key'),
+    '#size' => 40,
+    '#maxlength' => 40,
+    '#default_value' => $settings[COMMERCE_EVERYPAY_MODE_LIVE]['public_key'],
+  );
+
+  $form['mode'] = array(
+    '#type' => 'radios',
+    '#title' => t('Transaction mode'),
+    '#options' => array(
+      COMMERCE_EVERYPAY_MODE_SANDBOX => t('Sandbox'),
+      COMMERCE_EVERYPAY_MODE_LIVE => t('Live'),
+    ),
+    '#default_value' => $settings['mode'],
+  );
+
+  return $form;
+}
+
+function commerce_everypay_error_message($message, $level = 'error')
+{
+  drupal_set_message($message, $level);
+}
+
+function commerce_everypay_submit_form_validate($payment_method, $pane_form, $pane_values, $order, $form_parents = array()) {
+  if (!isset($pane_values['everypayToken'])) {
+    form_set_error('credit_card');
+
+    return;
+  }
+}
+
+function commerce_everypay_submit_form_submit($payment_method, $pane_form, $pane_values, $order, $charge) {
+
+  $everypay = new Everypay($payment_method);
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $currency_code = $wrapper->commerce_order_total->currency_code->value();
+
+  if (!isset($pane_values['everypayToken'])) {
+    commerce_everypay_error_message(t('Invalid card data provided.'));
+
+    return false;
+  }
+
+  $amount = $charge['amount'];
+  $token = $pane_values['everypayToken'];
+
+  $response = $everypay->pay($amount, $token);
+
+  if (!isset($response['token'])) {
+    commerce_everypay_error_message($response['error']['message']);
+
+    $everypay->createTransaction(
+      $order,
+      $payment_method['instance_id'],
+      $amount,
+      $currency_code,
+      COMMERCE_PAYMENT_STATUS_FAILURE,
+      $response
+    );
+
+    return false;
+  }
+
+  $everypay->createTransaction(
+    $order,
+    $payment_method['instance_id'],
+    $amount,
+    $currency_code,
+    COMMERCE_PAYMENT_STATUS_SUCCESS,
+    $response
+  );
+
+  return true;
+}
+
+function commerce_everypay_submit_form($payment_method, $pane_values, $checkout_pane, $order) {
+
+  $everypay = new Everypay($payment_method);
+  $form = array();
+
+  $wrapper = entity_metadata_wrapper('commerce_order', $order);
+  $amount = $wrapper->commerce_order_total->amount->value();
+  $currency_code = $wrapper->commerce_order_total->currency_code->value();
+
+  $form['everypayToken'] = array(
+    '#type' => 'hidden',
+    '#attributes' => array(
+      'id' => 'everypayToken',
+    )
+  );
+
+  $form['iframe_button'] = array(
+    '#markup' => $everypay->renderButton($amount, $currency_code)
+  );
+
+  $form['button_holder'] = array(
+    '#markup' => '<div class="button-holder" style="display: none;"></div>'
+  );
+
+  $form['cards_image'] = array(
+    '#markup' => $everypay->renderDescription()
+  );
+
+  return $form;
+}
