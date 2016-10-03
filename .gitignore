@@ -7,8 +7,9 @@
 !modules/
 modules/*
 
-!modules/commerce_everypay/
-modules/commerce_everypay/**
+!modules/commerce_everypay
+!modules/commerce_everypay_1/**
 
 !.gitignore
 !README.md
+!/modules/commerce_everypay/

@@ -1,7 +1,0 @@
-name = EveryPay Integration for Drupal Commerce
-description = Provides Integration with EveryPay Payment Gateway (https://www.everypay.gr).
-package = Commerce (contrib)
-dependencies[] = commerce
-dependencies[] = commerce_payment
-core = 7.x
-configure = admin/settings/commerce-everypay
